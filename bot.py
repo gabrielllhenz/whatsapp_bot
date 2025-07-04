@@ -32,7 +32,7 @@ def whatsapp():
             msg.media(selected['url'])
             return str(resp)
 
-    # Se não for número válido, mostrar menu
+    # Sempre mostra a lista completa se não for número válido
     message = "Escolha um número para ouvir um áudio:\n"
     for idx, audio in enumerate(audio_options, start=1):
         message += f"{idx} - {audio['title']}\n"
