@@ -5,7 +5,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 app = Flask(__name__)
 
 audio_options = [
-    { "title": "a bebida mata lentamente", "url": "https://raw.githubusercontent.com/gabrielllhenz/audio_file/main/a%20bebida%20mata%20lentamente.mp3" },
+{ "title": "a bebida mata lentamente", "url": "https://raw.githubusercontent.com/gabrielllhenz/audio_file/main/a%20bebida%20mata%20lentamente.mp3" },
     { "title": "a droga", "url": "https://raw.githubusercontent.com/gabrielllhenz/audio_file/main/a%20droga.mp3" },
     { "title": "acorda(monark)", "url": "https://raw.githubusercontent.com/gabrielllhenz/audio_file/main/acorda%28monark%29.mp3" },
     { "title": "bye bye", "url": "https://raw.githubusercontent.com/gabrielllhenz/audio_file/main/bye%20bye.mp3" },
@@ -107,25 +107,50 @@ audio_options = [
     { "title": "é tudo mais dificil pra mim (yuri22)", "url": "https://raw.githubusercontent.com/gabrielllhenz/audio_file/main/%C3%A9%20tudo%20mais%20dificil%20pra%20mim%20%28yuri22%29.mp3" }
 ]
 
+user_pages = {}
+
+def get_audio_page(page):
+    start = (page - 1) * 10
+    end = start + 10
+    sliced = audio_options[start:end]
+    total_pages = (len(audio_options) + 10 - 1) // 10
+
+    message = f"📀 Áudios disponíveis (página {page} de {total_pages}):\n"
+    for i, audio in enumerate(sliced, start=start + 1):
+        message += f"{i} - {audio['title']}\n"
+    message += "\nDigite o número do áudio ou envie 'próximo' / 'anterior'."
+    return message
+
 @app.route("/whatsapp", methods=['POST'])
 def whatsapp():
     incoming_msg = request.form.get('Body', '').strip().lower()
+    from_number = request.form.get('From')
     resp = MessagingResponse()
     msg = resp.message()
+
+    if from_number not in user_pages:
+        user_pages[from_number] = 1
 
     if incoming_msg.isdigit():
         choice = int(incoming_msg)
         if 1 <= choice <= len(audio_options):
             selected = audio_options[choice - 1]
-            msg.body(f"Enviando: {selected['title']}")
-            msg.media(selected['url'])
+            msg.body("🎧 Enviando: " + selected["title"])
+            msg.media(selected["url"])
             return str(resp)
 
-    # Sempre mostra a lista completa se não for número válido
-    message = "Escolha um número para ouvir um áudio:\n"
-    for idx, audio in enumerate(audio_options, start=1):
-        message += f"{idx} - {audio['title']}\n"
-    msg.body(message)
+    elif incoming_msg in ["próximo", "proximo", "next"]:
+        user_pages[from_number] += 1
+        if user_pages[from_number] > (len(audio_options) + 10 - 1) // 10:
+            user_pages[from_number] = 1
+
+    elif incoming_msg in ["anterior", "voltar", "back"]:
+        user_pages[from_number] -= 1
+        if user_pages[from_number] < 1:
+            user_pages[from_number] = 1
+
+    page = user_pages[from_number]
+    msg.body(get_audio_page(page))
     return str(resp)
 
 if __name__ == "__main__":
